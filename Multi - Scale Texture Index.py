@@ -22,6 +22,9 @@ def texture_attribute_image(input_gray_filename, output_filename, min_scale, max
                                                                  ['minimum', 'median', 'mean', 'maximum', 'range']).
     - order: Order of texture to be calculated (must be either 'first' or 'second').
     - displ_dist: Magnitude of displacement vector to be used for calculation of second - order texture.
+    - second_order_attribute: Type of second order texture to be calculated (must be one of 
+                                                                             ['contrast', 'dissimilarity', 'homogeneity', 'ASM', 
+                                                                              'energy', 'correlation'])
     - GL: Maximum gray level to be used for calculation of second - order texture.
     
     Output:
