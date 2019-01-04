@@ -5,3 +5,7 @@ Function is used to generate the multi - scale texture image (with choice of fir
 paper 'Spatial Context - Dependent Multi - Scale and Directional Image Texture' by Timothy A. Warner  & Jong Yeol Lee (2011).
 
 Requirements:
+- numpy
+- gdal
+- skimage
+- tqdm
