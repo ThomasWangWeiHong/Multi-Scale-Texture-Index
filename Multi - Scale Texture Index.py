@@ -56,7 +56,7 @@ def texture_attribute_image(input_gray_filename, output_filename, min_scale, max
     gray_img = gdal.Open(input_gray_filename).ReadAsArray()
     max_buffer = int((max_scale - 1) / 2)
     gray_img_padded = np.zeros(((gray_img.shape[0] + 2 * max_buffer), (gray_img.shape[1] + 2 * max_buffer)))
-    gray_img_padded[max_buffer : (max_buffer + gray_img.shape[0] + 1), max_buffer : (max_buffer + gray_img.shape[1] + 1)] = gray_img
+    gray_img_padded[max_buffer : (max_buffer + gray_img.shape[0]), max_buffer : (max_buffer + gray_img.shape[1])] = gray_img
     
     txt_img = np.zeros((gray_img.shape[0], gray_img.shape[1], int((max_scale - min_scale) / step_size) + 1))
     attribute_img = np.zeros((gray_img.shape[0], gray_img.shape[1]))
