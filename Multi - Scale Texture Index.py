@@ -46,7 +46,7 @@ def grayscale_raster_creation(input_MSfile, output_filename):
   
 
 def texture_attribute_image(input_gray_filename, output_filename, min_scale, max_scale, step_size, attribute, order, 
-                            displ_dist, second_order_attribute, GL = 127):
+                            displ_dist, second_order_attribute, GL = 128):
     """ 
     This function is used to create the texture images of the various first - order and second order multi - scale texture 
     attributes defined in the paper 'Spatial Context - Dependent Multi - Scale and Directional Image Texture' by 
@@ -109,7 +109,7 @@ def texture_attribute_image(input_gray_filename, output_filename, min_scale, max
                     array = gray_img_padded[(i - buffer) : (i + buffer + 1), (j - buffer) : (j + buffer + 1)]
                     txt_img[i - max_buffer, j - max_buffer, int((scale - min_scale) / step_size)] = np.var(array)
     elif order == 'second':
-        gray_img_rescaled = exposure.rescale_intensity(gray_img_padded, out_range = (0, GL)).astype('uint8')
+        gray_img_rescaled = exposure.rescale_intensity(gray_img_padded, out_range = (0, GL - 1)).astype('uint8')
         for scale in tqdm(range(min_scale, max_scale + 1, step_size), mininterval = 300):
             buffer = int((scale - 1) / 2)
             for i in range(max_buffer, gray_img_padded.shape[0] - max_buffer):            
