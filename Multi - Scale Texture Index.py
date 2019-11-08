@@ -1,5 +1,5 @@
 import numpy as np
-from osgeo import gdal
+import rasterio
 from skimage import exposure
 from skimage.feature import greycomatrix, greycoprops
 from tqdm import tqdm
@@ -23,23 +23,16 @@ def grayscale_raster_creation(input_MSfile, output_filename):
     
     """
     
-    image = np.transpose(gdal.Open(input_MSfile).ReadAsArray(), [1, 2, 0])
-    gray = np.zeros((int(image.shape[0]), int(image.shape[1])))
+    with rasterio.open(input_MSfile) as f:
+        metadata = f.profile
+        img = np.transpose(f.read(tuple(np.arange(metadata['count']) + 1)), [1, 2, 0])[:, :, 0 : 3]
+        
+    gray = np.max(img, axis = 2).astype(metadata['dtype'])
     
-    for i in range(image.shape[0]):
-        for j in range(image.shape[1]):
-            gray[i, j] = max(image[i, j, 0], image[i, j, 1], image[i, j, 2])
+    metadata['count'] = 1
+    with rasterio.open(output_filename, 'w', **metadata) as dst:
+        dst.write(gray[np.newaxis, :, :])
     
-    input_dataset = gdal.Open(input_MSfile)
-    input_band = input_dataset.GetRasterBand(1)
-    gtiff_driver = gdal.GetDriverByName('GTiff')
-    output_dataset = gtiff_driver.Create(output_filename, input_band.XSize, input_band.YSize, 1, gdal.GDT_Float32)
-    output_dataset.SetProjection(input_dataset.GetProjection())
-    output_dataset.SetGeoTransform(input_dataset.GetGeoTransform())
-    output_dataset.GetRasterBand(1).WriteArray(gray)
-    
-    output_dataset.FlushCache()
-    del output_dataset
     
     return gray
 
@@ -93,13 +86,21 @@ def texture_attribute_image(input_gray_filename, output_filename, min_scale, max
     if (second_order_attribute not in ['contrast', 'dissimilarity', 'homogeneity', 'ASM', 'energy', 'correlation']):
         raise ValueError("Please input either 'contrast' or 'dissimilarity' or 'homogeneity' or 'ASM' or 'energy' or 'correlation' for second_order_attribute.")
     
-    gray_img = gdal.Open(input_gray_filename).ReadAsArray()
     max_buffer = int((max_scale - 1) / 2)
-    gray_img_padded = np.zeros(((gray_img.shape[0] + 2 * max_buffer), (gray_img.shape[1] + 2 * max_buffer)))
-    gray_img_padded[max_buffer : (max_buffer + gray_img.shape[0]), max_buffer : (max_buffer + gray_img.shape[1])] = gray_img
+    
+    
+    with rasterio.open(input_gray_filename) as f:
+        metadata = f.profile
+        gray_img = f.read(1)
+    
+    
+    gray_img_padded = np.pad(gray_img, ((max_buffer, max_buffer), (max_buffer, max_buffer)), 
+                             mode = 'constant').astype(metadata['dtype'])
+    
+    
     
     txt_img = np.zeros((gray_img.shape[0], gray_img.shape[1], int((max_scale - min_scale) / step_size) + 1))
-    attribute_img = np.zeros((gray_img.shape[0], gray_img.shape[1]))
+    
     
     if order == 'first':
         for scale in tqdm(range(min_scale, max_scale + 1, step_size), mininterval = 300):
@@ -115,35 +116,26 @@ def texture_attribute_image(input_gray_filename, output_filename, min_scale, max
             for i in range(max_buffer, gray_img_padded.shape[0] - max_buffer):            
                 for j in range(max_buffer, gray_img_padded.shape[1] - max_buffer) :                                                                                                                                   
                     array = gray_img_rescaled[(i - buffer) : (i + buffer + 1), (j - buffer) : (j + buffer + 1)]
-                    glcm = greycomatrix(array, [displ_dist], [0, np.pi / 4, np.pi / 2, (3 / 4) * np.pi], levels = 128, 
-                               normed = True)
+                    glcm = greycomatrix(array, [displ_dist], [0, np.pi / 4, np.pi / 2, (3 / 4) * np.pi], levels = GL, 
+                                        normed = True)
                     props = greycoprops(glcm, prop = second_order_attribute)
                     txt_img[i - max_buffer, j - max_buffer, int((scale - min_scale) / step_size)] = props.mean()
                     
                     
-    for i in range(attribute_img.shape[0]):
-        for j in range(attribute_img.shape[1]):
-            
-            if (attribute == 'minimum'):
-                attribute_img[i, j] = np.min(txt_img[i, j, :])
-            elif (attribute == 'median'):
-                attribute_img[i, j] = np.median(txt_img[i, j, :])
-            elif (attribute == 'mean'):
-                attribute_img[i, j] = np.mean(txt_img[i, j, :])
-            elif (attribute == 'maximum'):
-                attribute_img[i, j] = np.max(txt_img[i, j, :])
-            elif (attribute == 'range'):
-                attribute_img[i, j] = np.max(txt_img[i, j, :]) - np.min(txt_img[i, j, :])
+    if (attribute == 'minimum'):
+        attribute_img = np.min(txt_img, axis = 2).astype(np.float32)
+    elif (attribute == 'median'):
+        attribute_img = np.median(txt_img, axis = 2).astype(np.float32)
+    elif (attribute == 'mean'):
+        attribute_img = np.mean(txt_img, axis = 2).astype(np.float32)
+    elif (attribute == 'maximum'):
+        attribute_img = np.max(txt_img, axis = 2).astype(np.float32)
+    elif (attribute == 'range'):
+        attribute_img = (np.max(txt_img, axis = 2) - np.min(txt_img, axis = 2)).astype(np.float32)
     
-    input_dataset = gdal.Open(input_gray_filename)
-    input_band = input_dataset.GetRasterBand(1)
-    gtiff_driver = gdal.GetDriverByName('GTiff')
-    output_dataset = gtiff_driver.Create(output_filename, input_band.XSize, input_band.YSize, 1, gdal.GDT_Float32)
-    output_dataset.SetProjection(input_dataset.GetProjection())
-    output_dataset.SetGeoTransform(input_dataset.GetGeoTransform())
-    output_dataset.GetRasterBand(1).WriteArray(attribute_img)    
-    output_dataset.FlushCache()
-    output_dataset.GetRasterBand(1).ComputeStatistics(False)
-    del output_dataset
+    metadata['dtype'] = 'float32'
+    with rasterio.open(output_filename, 'w', **metadata) as dst:
+        dst.write(attribute_img[np.newaxis, :, :])
+        
     
     return attribute_img
