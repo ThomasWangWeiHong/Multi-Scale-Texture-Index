@@ -6,6 +6,18 @@ paper 'Spatial Context - Dependent Multi - Scale and Directional Image Texture' 
 
 Requirements:
 - numpy
-- gdal
+- rasterio
 - skimage
 - tqdm
+
+Test Image (courtesy of USGS NAIP):
+
+![alt text](https://github.com/ThomasWangWeiHong/Multi-Scale-Texture-Index/blob/master/Test_Image.JPG)
+
+First Order Attribute (Minimum) Image:
+
+![alt text](https://github.com/ThomasWangWeiHong/Multi-Scale-Texture-Index/blob/master/First_Order_Min_Attribute_Image.JPG)
+
+First Order Attribute (Maximum) Image:
+
+![alt text](https://github.com/ThomasWangWeiHong/Multi-Scale-Texture-Index/blob/master/First_Order_Max_Attribute_Image.JPG)
